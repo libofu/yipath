@@ -27,14 +27,23 @@ class Profile(BaseModel):
 
 
 class Card(BaseModel):
-    action: str = Field(min_length=1, max_length=120)  # concrete, doable
-    reason: str = Field(min_length=1, max_length=120)  # one line
+    # The prompt asks for <=50 / <=40; the limits here leave slack but catch runaway output.
+    action: str = Field(min_length=1, max_length=65)  # concrete, doable
+    reason: str = Field(min_length=1, max_length=55)  # one line
 
 
 class Reading(BaseModel):
     """The LLM's structured answer; also what the API returns."""
 
-    theme: str = Field(min_length=1, max_length=60)
+    theme: str = Field(min_length=4, max_length=10)  # 四字成语/短语 or one line of classical verse
+
+    @field_validator("theme")
+    @classmethod
+    def _theme_is_one_phrase(cls, v: str) -> str:
+        v = v.strip()
+        if any(ch in v for ch in "，。、；：！？,.;:!? \u3000「」\"“”"):
+            raise ValueError("theme must be a single phrase without punctuation")
+        return v
     work: Card
     life: Card
     avoid: Card

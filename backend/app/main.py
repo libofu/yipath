@@ -8,7 +8,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from pydantic import BaseModel
 
 from app.advice.schema import Profile, Reading
-from app.advice.service import AdviceService, AnthropicClient, ReadingError
+from app.advice.service import AdviceService, ReadingError, make_llm
 from app.store import Store
 
 
@@ -44,7 +44,7 @@ def get_service() -> AdviceService:
     global _service
     if _service is None:
         _load_dotenv()
-        _service = AdviceService(get_store(), AnthropicClient())
+        _service = AdviceService(get_store(), make_llm())
     return _service
 
 

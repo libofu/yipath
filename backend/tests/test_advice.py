@@ -4,7 +4,7 @@ from datetime import date
 import pytest
 from fastapi.testclient import TestClient
 
-from app.advice.prompt import SYSTEM_PROMPT, build_today_prompt, build_week_prompt
+from app.advice.prompt import PROMPT_VERSION, SYSTEM_PROMPT, build_today_prompt, build_week_prompt
 from app.advice.schema import Profile
 from app.advice.service import AdviceService, ReadingError, parse_reading
 from app.calc.bazi import natal_chart
@@ -55,6 +55,43 @@ def test_parse_rejects_invalid(bad):
         parse_reading(bad)
 
 
+def _with(**over):
+    d = json.loads(json.dumps(GOOD, ensure_ascii=False))
+    d.update(over)
+    return json.dumps(d, ensure_ascii=False)
+
+
+@pytest.mark.parametrize("theme", ["静", "这是一个明显太长的主题句子啊啊"])
+def test_theme_length_enforced(theme):
+    with pytest.raises(ValueError):
+        parse_reading(_with(theme=theme))
+
+
+def test_theme_accepts_idiom_and_verse():
+    assert parse_reading(_with(theme="风物长宜放眼量")).theme == "风物长宜放眼量"
+    assert parse_reading(_with(theme="木气补身")).theme == "木气补身"
+
+
+@pytest.mark.parametrize("theme", ["官星临门，木气生发", "静水 流深", "「静水流深」"])
+def test_theme_with_punctuation_rejected(theme):
+    with pytest.raises(ValueError):
+        parse_reading(_with(theme=theme))
+
+
+def test_week_prompt_labels_weekdays(profile):
+    chart = natal_chart(profile.birth_date, profile.birth_hour)
+    text = build_week_prompt(profile, chart, week_reading(chart, date(2026, 10, 7)))
+    # 2026-10-07 (甲寅) is a Wednesday
+    assert "周三 2026-10-07 日柱甲寅" in text
+    assert "周一 2026-10-05" in text and "周日 2026-10-11" in text
+
+
+def test_overlong_card_text_rejected():
+    long_card = {"action": "甲" * 66, "reason": "乙"}
+    with pytest.raises(ValueError):
+        parse_reading(_with(work=long_card))
+
+
 def test_profile_normalizes_and_validates_mbti():
     assert Profile(birth_date=date(2000, 1, 1), mbti="intj").mbti == "INTJ"
     with pytest.raises(ValueError):
@@ -79,6 +116,17 @@ def test_week_prompt_lists_seven_days(profile):
 
 def test_system_prompt_has_safety_boundary():
     assert "医疗" in SYSTEM_PROMPT and "不渲染焦虑" in SYSTEM_PROMPT
+
+
+def test_system_prompt_forbids_unsupplied_chart_claims_and_stock_phrase():
+    assert "不得自行补充" in SYSTEM_PROMPT and "身强身弱" in SYSTEM_PROMPT
+    # the stock reply must not be baked into the example, or models copy it every time
+    assert SYSTEM_PROMPT.count("容我思量") == 0
+
+
+def test_system_prompt_voice_and_theme_rules():
+    assert "宜" in SYSTEM_PROMPT and "忌" in SYSTEM_PROMPT and "文言" in SYSTEM_PROMPT
+    assert "四字成语" in SYSTEM_PROMPT and "古诗" in SYSTEM_PROMPT
 
 
 # --- service ---------------------------------------------------------------------------
@@ -119,7 +167,7 @@ def test_gives_up_after_max_attempts_and_does_not_cache(store, profile):
     uid, _ = store.create_user(profile)
     with pytest.raises(ReadingError):
         svc.get(uid, profile, "today", date(2026, 10, 7))
-    assert store.get_reading(uid, "today", "2026-10-07", "v1") is None
+    assert store.get_reading(uid, "today", "2026-10-07", PROMPT_VERSION) is None
 
 
 def test_profile_update_invalidates_cache(store, profile):
@@ -190,3 +238,37 @@ def test_llm_failure_returns_502(store):
         assert c.get("/reading/today", params={"date": "2026-10-07"}, headers=h).status_code == 502
     finally:
         app.dependency_overrides.clear()
+
+
+# --- DeepSeek adapter ------------------------------------------------------------------------
+
+def test_deepseek_client_request_and_response_shape():
+    import httpx
+    from app.advice.service import DeepSeekClient
+
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        seen["auth"] = request.headers["authorization"]
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(GOOD, ensure_ascii=False)}}]})
+
+    client = DeepSeekClient(api_key="k", transport=httpx.MockTransport(handler))
+    svc_reading = parse_reading(client.complete("SYS", "USER"))
+    assert svc_reading.theme == "先稳后进"
+    assert seen["url"] == "https://api.deepseek.com/chat/completions"
+    assert seen["auth"] == "Bearer k"
+    assert seen["body"]["response_format"] == {"type": "json_object"}
+    assert seen["body"]["messages"][0] == {"role": "system", "content": "SYS"}
+
+
+def test_make_llm_selection(monkeypatch):
+    from app.advice.service import DeepSeekClient, make_llm
+
+    monkeypatch.delenv("YIPATH_LLM", raising=False)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "k")
+    assert isinstance(make_llm(), DeepSeekClient)
+    monkeypatch.setenv("YIPATH_LLM", "nope")
+    with pytest.raises(RuntimeError):
+        make_llm()

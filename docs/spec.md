@@ -5,7 +5,7 @@ An iOS subscription app for people tired of making decisions. A calm coach reads
 
 - **Name:** yipath / 易行 (follow the Book of Changes; make action easier)
 - **Language:** Chinese UI and content
-- **Tone:** calm coach. Steady, concrete, never fear-based.
+- **Tone:** a calm fortune-teller with a light classical (文言) flavor, in the spirit of the almanac's 宜/忌. Steady and concrete, never fear-based; classical wording is seasoning, meaning stays plain.
 - **Platform:** iOS first (SwiftUI, iOS 17+)
 - **Monetization:** subscription
 
@@ -19,8 +19,8 @@ An iOS subscription app for people tired of making decisions. A calm coach reads
 Deferred: Plum Blossom / I Ching, blood type, month and year readings.
 
 ## Output (per period: today, week)
-- `theme`: one short line
-- `work`, `life`, `avoid`: each has `action` (concrete, doable) and `reason` (one line)
+- `theme`: a four-character idiom/phrase or one line of classical verse (4-10 chars, no punctuation), e.g. 木气补身, 风物长宜放眼量
+- `work` (宜·事业), `life` (宜·起居), `avoid` (忌): each has `action` (concrete, doable, <=50 chars) and `reason` (one classical-flavored line, <=40 chars)
 
 ## Principles
 - Code computes charts (deterministic, tested). The LLM only interprets.

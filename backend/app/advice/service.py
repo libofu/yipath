@@ -43,6 +43,55 @@ class AnthropicClient:
         return "".join(b.text for b in msg.content if b.type == "text")
 
 
+class DeepSeekClient:
+    """DeepSeek's chat API is OpenAI-compatible, so plain httpx is enough."""
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        base_url: str | None = None,
+        transport=None,  # tests inject httpx.MockTransport
+    ):
+        import httpx
+
+        self._http = httpx.Client(
+            base_url=base_url or os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+            headers={"Authorization": f"Bearer {api_key or os.environ['DEEPSEEK_API_KEY']}"},
+            timeout=60,
+            transport=transport,
+        )
+        self._model = model or os.environ.get("YIPATH_MODEL", "deepseek-flash")
+
+    def complete(self, system: str, user: str) -> str:
+        r = self._http.post(
+            "/chat/completions",
+            json={
+                "model": self._model,
+                # Thinking models (e.g. deepseek-v4-pro) spend reasoning tokens from this
+                # same budget; 800 left nothing for the JSON.
+                "max_tokens": int(os.environ.get("YIPATH_MAX_TOKENS", "6000")),
+                "response_format": {"type": "json_object"},
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+            },
+        )
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"] or ""
+
+
+def make_llm() -> LlmClient:
+    """Pick the provider from YIPATH_LLM (default: deepseek if its key is set, else anthropic)."""
+    provider = os.environ.get("YIPATH_LLM") or ("deepseek" if os.environ.get("DEEPSEEK_API_KEY") else "anthropic")
+    if provider == "deepseek":
+        return DeepSeekClient()
+    if provider == "anthropic":
+        return AnthropicClient()
+    raise RuntimeError(f"unknown YIPATH_LLM={provider!r}")
+
+
 class ReadingError(Exception):
     """The model did not return a valid reading after retrying."""
 
