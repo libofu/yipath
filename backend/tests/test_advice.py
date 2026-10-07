@@ -186,7 +186,7 @@ def test_token_is_stored_hashed(store, profile):
     assert store.user_by_token(token)[0] == uid
     assert store.user_by_token("wrong") is None
     import sqlite3
-    row = sqlite3.connect(store.path).execute("SELECT token_hash FROM users").fetchone()
+    row = sqlite3.connect(store.path).execute("SELECT token_hash FROM sessions").fetchone()
     assert token not in row[0]
 
 

@@ -4,3 +4,5 @@ uvicorn[standard]
 anthropic
 pytest
 httpx
+PyJWT[crypto]
+cryptography
