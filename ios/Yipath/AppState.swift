@@ -34,14 +34,16 @@ final class AppState {
 
     private var loadedOn: [Period: String] = [:]   // which day each loaded reading belongs to
     private let api: APIClient
+    private let reminders: ReminderScheduler
 
     /// iOS keeps Keychain items after an app is deleted, but removes UserDefaults. So this flag
     /// being absent means "fresh install": any token still in the Keychain is left over from a
     /// previous install and must not silently log the new install in.
     static let launchedBeforeKey = "yipath.launchedBefore"
 
-    init(api: APIClient = .fromBundle()) {
+    init(api: APIClient = .fromBundle(), reminders: ReminderScheduler = ReminderScheduler()) {
         self.api = api
+        self.reminders = reminders
         if !UserDefaults.standard.bool(forKey: Self.launchedBeforeKey) {
             TokenStore.delete()
             UserDefaults.standard.set(true, forKey: Self.launchedBeforeKey)
@@ -112,6 +114,7 @@ final class AppState {
 
     /// Forgets the user on this device only (the server keeps the account).
     func signOut(message: String? = nil) {
+        reminders.cancel()   // a signed-out phone should not keep nudging about readings
         TokenStore.delete()
         ProfileStore.delete()
         token = nil

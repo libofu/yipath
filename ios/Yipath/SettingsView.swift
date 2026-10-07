@@ -9,6 +9,12 @@ struct SettingsView: View {
     @State private var showingDeleteConfirm = false
     @State private var showingManageSubscriptions = false
     @State private var errorMessage: String?
+    // @AppStorage reads and writes UserDefaults and redraws the view when the value changes.
+    @AppStorage(ReminderScheduler.enabledKey) private var reminderOn = false
+    @AppStorage(ReminderScheduler.hourKey) private var reminderHour = ReminderScheduler.defaultHour
+    @AppStorage(ReminderScheduler.minuteKey) private var reminderMinute = 0
+    @State private var reminderDenied = false
+    private let reminders = ReminderScheduler()
 
     var body: some View {
         NavigationStack {
@@ -36,6 +42,29 @@ struct SettingsView: View {
                     if let message = subscriptions.message {
                         Text(message).font(.footnote).foregroundStyle(Palette.inkSoft)
                     }
+                }
+                .listRowBackground(Palette.card)
+
+                Section {
+                    Toggle("每日提醒", isOn: Binding(
+                        get: { reminderOn },
+                        set: { setReminder($0) }
+                    ))
+                    .accessibilityIdentifier("reminderToggle")
+                    if reminderOn {
+                        DatePicker("提醒时间", selection: reminderTime, displayedComponents: .hourAndMinute)
+                            .environment(\.locale, Locale(identifier: "zh_CN"))
+                    }
+                    if reminderDenied {
+                        Button("通知已关闭，点此去系统设置开启") {
+                            if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                        }
+                        .font(.footnote)
+                    }
+                } header: {
+                    Text("提醒")
+                } footer: {
+                    Text("每天在设定的时间轻轻提醒你查看今日宜忌。")
                 }
                 .listRowBackground(Palette.card)
 
@@ -78,6 +107,37 @@ struct SettingsView: View {
             } message: {
                 Text("你的出生资料与所有记录将从服务器清除，无法恢复。")
             }
+        }
+    }
+
+    /// The reminder time as a Date, for the DatePicker; edits are saved back as hour + minute.
+    private var reminderTime: Binding<Date> {
+        Binding(
+            get: {
+                var c = DateComponents(year: 2000, month: 1, day: 1, hour: reminderHour, minute: reminderMinute)
+                c.calendar = Calendar.current
+                return c.date ?? Date()
+            },
+            set: { newValue in
+                let parts = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+                reminderHour = parts.hour ?? ReminderScheduler.defaultHour
+                reminderMinute = parts.minute ?? 0
+                Task { await reminders.reschedule(hour: reminderHour, minute: reminderMinute) }
+            }
+        )
+    }
+
+    private func setReminder(_ on: Bool) {
+        if on {
+            Task {
+                let granted = await reminders.enable(hour: reminderHour, minute: reminderMinute)
+                reminderOn = granted
+                reminderDenied = !granted
+            }
+        } else {
+            reminders.cancel()   // also switches the saved flag off
+            reminderOn = false
+            reminderDenied = false
         }
     }
 
