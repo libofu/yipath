@@ -1,0 +1,64 @@
+# XcodeGen project definition. Generate the Xcode project with:  cd ios && xcodegen
+# (Yipath.xcodeproj is generated, so it is not committed.)
+name: Yipath
+
+options:
+  bundleIdPrefix: com.libofu
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # Where the backend lives. Simulator + local `uvicorn` by default; change for a deployed server.
+    YIPATH_API_BASE_URL: "http://127.0.0.1:8000"
+
+targets:
+  Yipath:
+    type: application
+    platform: iOS
+    sources:
+      - Yipath
+    info:
+      path: Yipath/Info.plist
+      properties:
+        CFBundleDisplayName: 易行
+        CFBundleDevelopmentRegion: zh-Hans
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        ITSAppUsesNonExemptEncryption: false
+        YipathAPIBaseURL: $(YIPATH_API_BASE_URL)
+        # Lets the app talk plain http to the local dev server (127.0.0.1) only.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.libofu.yipath
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+
+  YipathTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - YipathTests
+    dependencies:
+      - target: Yipath
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.libofu.yipath.tests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  Yipath:
+    build:
+      targets:
+        Yipath: all
+    test:
+      targets:
+        - YipathTests
