@@ -1,0 +1,6 @@
+lunar-python
+fastapi
+uvicorn[standard]
+anthropic
+pytest
+httpx
