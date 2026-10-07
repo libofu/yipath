@@ -7,7 +7,7 @@ An iOS subscription app for people tired of making decisions. A calm coach reads
 - **Language:** Chinese UI and content
 - **Tone:** a calm fortune-teller with a light classical (文言) flavor, in the spirit of the almanac's 宜/忌. Steady and concrete, never fear-based; classical wording is seasoning, meaning stays plain.
 - **Platform:** iOS first (SwiftUI, iOS 17+)
-- **Monetization:** subscription
+- **Monetization:** subscription (monthly or yearly auto-renewing, via StoreKit 2) after a 3-day free trial. Sign in with Apple; account deletion in the app.
 
 ## Systems (MVP)
 | System | Role |

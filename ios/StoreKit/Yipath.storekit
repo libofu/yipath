@@ -1,0 +1,82 @@
+{
+  "identifier" : "A1B2C3D4",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "zh_CN",
+    "_storefront" : "CHN",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21000001",
+      "localizations" : [
+
+      ],
+      "name" : "易行会员",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "18",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6740000001",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "每日宜忌与行动安排，按月续费",
+              "displayName" : "月度会员",
+              "locale" : "zh_Hans"
+            }
+          ],
+          "productID" : "com.libofu.yipath.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "月度会员",
+          "subscriptionGroupID" : "21000001",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "128",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "6740000002",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "每日宜忌与行动安排，按年续费",
+              "displayName" : "年度会员",
+              "locale" : "zh_Hans"
+            }
+          ],
+          "productID" : "com.libofu.yipath.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "年度会员",
+          "subscriptionGroupID" : "21000001",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

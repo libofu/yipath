@@ -28,6 +28,9 @@ targets:
         CFBundleDisplayName: 易行
         CFBundleDevelopmentRegion: zh-Hans
         UILaunchScreen: {}
+        UIAppFonts:
+          - NotoSerifSC-Regular.ttf
+          - NotoSerifSC-Bold.ttf
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         ITSAppUsesNonExemptEncryption: false
@@ -35,6 +38,13 @@ targets:
         # Lets the app talk plain http to the local dev server (127.0.0.1) only.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+    # Sign in with Apple. (A real device build also needs this capability enabled for the
+    # App ID in your Apple Developer account; the simulator does not check.)
+    entitlements:
+      path: Yipath/Yipath.entitlements
+      properties:
+        com.apple.developer.applesignin:
+          - Default
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.libofu.yipath
@@ -47,6 +57,9 @@ targets:
     platform: iOS
     sources:
       - YipathTests
+      # the StoreKit test file is a resource of the tests (SKTestSession loads it by name)
+      - path: StoreKit/Yipath.storekit
+        buildPhase: resources
     dependencies:
       - target: Yipath
     settings:
@@ -56,6 +69,9 @@ targets:
 
 schemes:
   Yipath:
+    run:
+      # Running from Xcode uses these fake products, so purchases can be tried without App Store Connect.
+      storeKitConfiguration: StoreKit/Yipath.storekit
     build:
       targets:
         Yipath: all

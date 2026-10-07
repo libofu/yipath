@@ -1,7 +1,20 @@
 import SwiftUI
 
-/// First-run screen: a few questions, then "起盘" (cast the chart).
+/// Routes a new user: Sign in with Apple first, then the birth-details form.
 struct OnboardingView: View {
+    @Environment(AppState.self) private var appState
+
+    var body: some View {
+        if appState.stage == .signedOut {
+            SignInView()
+        } else {
+            ProfileSetupView()
+        }
+    }
+}
+
+/// After signing in: a few questions, then "起盘" (cast the chart).
+struct ProfileSetupView: View {
     @Environment(AppState.self) private var appState
     @State private var draft = ProfileDraft()
     @State private var isSubmitting = false
@@ -67,7 +80,7 @@ struct OnboardingView: View {
         errorMessage = nil
         defer { isSubmitting = false }
         do {
-            try await appState.onboard(draft.toProfile())
+            try await appState.updateProfile(draft.toProfile())
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? "出了点问题，请稍后再试。"
         }

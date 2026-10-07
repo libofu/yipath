@@ -4,6 +4,9 @@ import Foundation
 /// that is safe to show to the user (in Chinese).
 enum APIError: LocalizedError, Equatable {
     case unauthorized                 // 401: the token is no longer valid
+    case paymentRequired              // 402: trial is over and there is no active subscription
+    case invalidPurchase              // 400: the server could not verify the purchase with Apple
+    case conflict(String)             // 409: e.g. subscription belongs to another account
     case serverBusy                   // 502: the model could not produce a reading
     case server(Int)                  // any other HTTP error
     case network                      // could not reach the server at all
@@ -12,6 +15,10 @@ enum APIError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .unauthorized: return "登录已失效，请重新起盘。"
+        case .paymentRequired: return "试用已结束，订阅后可继续查看。"
+        case .invalidPurchase: return "这笔购买暂时无法验证，请稍后再试，或点「恢复购买」。"
+        case .conflict(let detail):
+            return detail.contains("another account") ? "该订阅已绑定其他账号。" : "请先填写出生资料。"
         case .serverBusy: return "先生一时没能排好，请稍后再试。"
         case .server(let code): return "服务暂时不可用（\(code)），请稍后再试。"
         case .network: return "无法连接服务，请检查网络，或确认后端已启动。"
@@ -33,6 +40,40 @@ struct APIClient {
     }
 
     // MARK: Calls
+
+    /// Sign in with Apple: trade Apple's identity token for our own login token.
+    /// `nonce` is the raw random string whose SHA-256 was given to Apple for this attempt.
+    func signInWithApple(identityToken: String, nonce: String) async throws -> SessionInfo {
+        struct Body: Encodable { let identity_token: String; let nonce: String }
+        let request = try makeRequest("auth/apple", method: "POST", body: Body(identity_token: identityToken, nonce: nonce))
+        return try await send(request)
+    }
+
+    /// The saved profile, or nil if the account hasn't filled it in yet.
+    func profile(token: String) async throws -> Profile? {
+        let request = try makeRequest("profile", method: "GET", token: token)
+        do {
+            return try await send(request) as Profile
+        } catch APIError.server(404) {
+            return nil
+        }
+    }
+
+    /// Permanently erases the account and everything stored about it on the server.
+    func deleteAccount(token: String) async throws {
+        _ = try await sendRaw(try makeRequest("account", method: "DELETE", token: token))
+    }
+
+    func subscriptionStatus(token: String) async throws -> Entitlement {
+        try await send(try makeRequest("subscription", method: "GET", token: token))
+    }
+
+    /// Hands the server the signed transaction StoreKit produced; the server checks Apple signed it.
+    func verifyTransaction(_ signedTransaction: String, token: String) async throws -> Entitlement {
+        struct Body: Encodable { let signed_transaction: String }
+        let request = try makeRequest("subscription/verify", method: "POST", body: Body(signed_transaction: signedTransaction), token: token)
+        return try await send(request)
+    }
 
     /// Creates the account and returns the access token.
     func createProfile(_ profile: Profile) async throws -> String {
@@ -98,10 +139,20 @@ struct APIClient {
         guard let http = response as? HTTPURLResponse else { throw APIError.badResponse }
         switch http.statusCode {
         case 200..<300: return data
+        case 400 where request.url?.path == "/subscription/verify": throw APIError.invalidPurchase
         case 401: throw APIError.unauthorized
+        case 402: throw APIError.paymentRequired
+        case 409: throw APIError.conflict(Self.detail(in: data))
         case 502: throw APIError.serverBusy
         default: throw APIError.server(http.statusCode)
         }
+    }
+}
+
+extension APIClient {
+    /// The server's error text ({"detail": "..."}), if any.
+    fileprivate static func detail(in data: Data) -> String {
+        (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["detail"] as? String ?? ""
     }
 }
 

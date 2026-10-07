@@ -3,8 +3,12 @@ import SwiftUI
 /// The "我的" tab: shows the profile, lets the user edit it, and holds the fine print.
 struct SettingsView: View {
     @Environment(AppState.self) private var appState
+    @Environment(SubscriptionManager.self) private var subscriptions
     @State private var showingEditor = false
     @State private var showingSignOutConfirm = false
+    @State private var showingDeleteConfirm = false
+    @State private var showingManageSubscriptions = false
+    @State private var errorMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -20,14 +24,39 @@ struct SettingsView: View {
                     .listRowBackground(Palette.card)
                 }
 
+                Section("订阅") {
+                    row("状态", Self.subscriptionText(appState.entitlement))
+                    if appState.entitlement?.status == .subscribed {
+                        Button("管理订阅") { showingManageSubscriptions = true }
+                    } else {
+                        Button("订阅") { appState.showPaywall = true }
+                            .accessibilityIdentifier("settingsSubscribe")
+                    }
+                    Button("恢复购买") { Task { await subscriptions.restore() } }
+                    if let message = subscriptions.message {
+                        Text(message).font(.footnote).foregroundStyle(Palette.inkSoft)
+                    }
+                }
+                .listRowBackground(Palette.card)
+
                 Section("说明") {
                     Text(Copy.disclaimer).font(.footnote).foregroundStyle(Palette.inkSoft)
+                    Text("字体：思源宋体（Noto Serif SC），SIL Open Font License 1.1。").font(.footnote).foregroundStyle(Palette.inkSoft)
                     row("版本", Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "-")
                 }
                 .listRowBackground(Palette.card)
 
                 Section {
-                    Button("清除本机数据并重新起盘", role: .destructive) { showingSignOutConfirm = true }
+                    Button("退出登录") { showingSignOutConfirm = true }
+                    Button("删除账号", role: .destructive) { showingDeleteConfirm = true }
+                        .accessibilityIdentifier("deleteAccount")
+                    if let errorMessage {
+                        Text(errorMessage).font(.footnote).foregroundStyle(Palette.seal)
+                    }
+                } header: {
+                    Text("账号")
+                } footer: {
+                    Text("删除账号会永久清除你在服务器上的资料与记录，无法恢复。订阅需在 Apple ID 的订阅设置中另行取消。")
                 }
                 .listRowBackground(Palette.card)
             }
@@ -35,8 +64,19 @@ struct SettingsView: View {
             .background(Palette.paper.ignoresSafeArea())
             .navigationTitle("我的")
             .sheet(isPresented: $showingEditor) { ProfileEditor() }
-            .confirmationDialog("确定清除本机数据吗？", isPresented: $showingSignOutConfirm, titleVisibility: .visible) {
-                Button("清除并重新起盘", role: .destructive) { appState.signOut() }
+            .manageSubscriptionsSheet(isPresented: $showingManageSubscriptions)
+            .confirmationDialog("确定退出登录吗？", isPresented: $showingSignOutConfirm, titleVisibility: .visible) {
+                Button("退出登录", role: .destructive) { appState.signOut() }
+            }
+            .confirmationDialog("确定永久删除账号吗？", isPresented: $showingDeleteConfirm, titleVisibility: .visible) {
+                Button("删除账号", role: .destructive) {
+                    Task {
+                        do { try await appState.deleteAccount() }
+                        catch { errorMessage = (error as? LocalizedError)?.errorDescription ?? "删除失败，请稍后再试。" }
+                    }
+                }
+            } message: {
+                Text("你的出生资料与所有记录将从服务器清除，无法恢复。")
             }
         }
     }
@@ -46,6 +86,15 @@ struct SettingsView: View {
             Text(title)
             Spacer()
             Text(value).foregroundStyle(Palette.inkSoft)
+        }
+    }
+
+    static func subscriptionText(_ e: Entitlement?) -> String {
+        guard let e else { return "—" }
+        switch e.status {
+        case .trial: return "试用中，至 \(PaywallView.dayText(e.trialEndsAt))"
+        case .subscribed: return "已订阅，至 \(PaywallView.dayText(e.expiresAt ?? e.trialEndsAt))"
+        case .expired: return "未订阅"
         }
     }
 

@@ -14,11 +14,18 @@ iOS subscription app: a calm-coach daily/weekly guide based on Bazi, zodiac and 
 - The owner is a Swift beginner: keep iOS code simple and commented where the SwiftUI idiom is non-obvious.
 - Git identity for this repo is `libofu`; remote uses the SSH alias `github-libofu`. Do not change global git config.
 
+## Accounts and subscription
+- Sign in with Apple -> `POST /auth/apple` (`backend/app/auth.py`, nonce required) -> our own session token. `POST /profile` (anonymous) exists only for development and is off when `YIPATH_ENV=production`.
+- Everyone gets a server-side free trial (`YIPATH_TRIAL_DAYS`, default 3), then needs a subscription. Readings return 402 otherwise. `GET /subscription` reports the status.
+- StoreKit 2 transactions are verified server-side (`backend/app/subscription.py`: Apple's pinned root cert, marker OIDs, ES256 signature, bundle/product checks). Never trust the app about what was bought. Local Xcode StoreKit transactions are accepted only with `YIPATH_STOREKIT_LOCAL=1` (never in production).
+- `DELETE /account` erases all server data (App Store requirement). See `docs/launch-checklist.md` for the Apple-account steps and known gaps.
+
 ## iOS app (ios/)
 - SwiftUI, iOS 17+, bundle id `com.libofu.yipath`. The Xcode project is generated from `ios/project.yml` with XcodeGen (`brew install xcodegen`, then `cd ios && xcodegen`); do not commit `Yipath.xcodeproj` or `Info.plist`.
 - Backend URL is `YIPATH_API_BASE_URL` in `project.yml` (default `http://127.0.0.1:8000`, simulator + local uvicorn).
+- Local purchases: `ios/StoreKit/Yipath.storekit` (placeholder prices) is used by Xcode's Run and by `SKTestSession` in the tests. `simctl launch` does not apply it, so the paywall shows no products there.
 - Debug-only launch arguments: `-yipath-demo` (skip onboarding with a sample profile), `-yipath-tab N` (open tab 0/1/2).
-- No Chinese serif font ships with iOS (Songti/Kaiti are absent), so text renders in PingFang. A real almanac look needs a bundled font such as Noto Serif SC.
+- iOS ships no Chinese serif, so `ios/Yipath/Fonts/` bundles Noto Serif SC (Regular + Bold, subsetted to GB2312 + library characters, SIL OFL; see its README). Use `.songti(size, relativeTo:, weight:)` in views. Re-subset the font if theme/angle files gain rare characters.
 
 ## Commands
 - Backend tests: `cd backend && python -m pytest`

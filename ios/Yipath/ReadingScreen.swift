@@ -14,7 +14,12 @@ struct ReadingScreen: View {
                 case .idle, .loading:
                     LoadingView()
                 case .failed(let message):
-                    FailureView(message: message) { Task { await appState.load(period, force: true) } }
+                    FailureView(
+                        message: message,
+                        retry: { Task { await appState.load(period, force: true) } },
+                        // when access has ended, "retry" is pointless; offer to subscribe instead
+                        subscribe: appState.entitlement?.status == .expired ? { appState.showPaywall = true } : nil
+                    )
                 case .loaded(let reading):
                     ReadingContent(period: period, reading: reading)
                 }
@@ -160,6 +165,7 @@ private struct LoadingView: View {
 private struct FailureView: View {
     let message: String
     let retry: () -> Void
+    var subscribe: (() -> Void)?
 
     var body: some View {
         VStack(spacing: 16) {
@@ -167,8 +173,14 @@ private struct FailureView: View {
                 .songti(17)
                 .foregroundStyle(Palette.ink)
                 .multilineTextAlignment(.center)
-            Button("重试", action: retry)
-                .buttonStyle(.borderedProminent)
+            if let subscribe {
+                Button("订阅", action: subscribe)
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("openPaywall")
+            } else {
+                Button("重试", action: retry)
+                    .buttonStyle(.borderedProminent)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 100)

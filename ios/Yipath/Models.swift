@@ -68,6 +68,65 @@ struct Profile: Codable, Equatable {
     }
 }
 
+/// What the server says about the user's access: free trial, subscribed, or expired.
+struct Entitlement: Codable, Equatable {
+    enum Status: String, Codable { case trial, subscribed, expired }
+
+    let status: Status
+    let trialEndsAt: Date
+    let expiresAt: Date?     // when the subscription lapses; nil if never subscribed
+    let productId: String?
+
+    var isActive: Bool { status != .expired }
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case trialEndsAt = "trial_ends_at"
+        case expiresAt = "expires_at"
+        case productId = "product_id"
+    }
+
+    init(status: Status, trialEndsAt: Date, expiresAt: Date? = nil, productId: String? = nil) {
+        self.status = status
+        self.trialEndsAt = trialEndsAt
+        self.expiresAt = expiresAt
+        self.productId = productId
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        status = try c.decode(Status.self, forKey: .status)
+        trialEndsAt = try Self.date(c, .trialEndsAt)
+        if c.contains(.expiresAt), try !c.decodeNil(forKey: .expiresAt) {
+            expiresAt = try Self.date(c, .expiresAt)
+        } else {
+            expiresAt = nil
+        }
+        productId = try c.decodeIfPresent(String.self, forKey: .productId)
+    }
+
+    /// The server sends ISO 8601 ("2026-10-07T16:30:11Z"), with or without fractional seconds.
+    private static func date(_ c: KeyedDecodingContainer<CodingKeys>, _ key: CodingKeys) throws -> Date {
+        let text = try c.decode(String.self, forKey: key)
+        let plain = ISO8601DateFormatter()
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = plain.date(from: text) ?? fractional.date(from: text) { return d }
+        throw DecodingError.dataCorruptedError(forKey: key, in: c, debugDescription: "bad date: \(text)")
+    }
+}
+
+/// The result of signing in: a login token, and whether the account already has a profile.
+struct SessionInfo: Decodable, Equatable {
+    let token: String
+    let hasProfile: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case token
+        case hasProfile = "has_profile"
+    }
+}
+
 /// "yyyy-MM-dd" in the device's calendar and time zone. A birth date is a calendar
 /// day, not a moment in time, so we always read and write it in local terms.
 enum DayFormat {

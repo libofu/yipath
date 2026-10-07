@@ -33,20 +33,23 @@ extension UIColor {
     }
 }
 
-/// Serif text for headings and advice. The system's serif design uses a Songti-style face
-/// for Chinese, so it needs no bundled font. It is a view modifier (not a plain Font)
-/// so that `@ScaledMetric` can scale the size with the user's Dynamic Type setting.
+/// Serif text for headings and advice, in Noto Serif SC (bundled in Fonts/, registered through
+/// UIAppFonts in project.yml). It is a view modifier (not a plain Font) so that `@ScaledMetric`
+/// can scale the size with the user's Dynamic Type setting. If the font file were ever missing,
+/// `Font.custom` quietly falls back to the system font, so the app still works.
 private struct SerifText: ViewModifier {
     @ScaledMetric private var size: CGFloat
-    private let weight: Font.Weight
+    private let fontName: String
 
     init(size: CGFloat, relativeTo style: Font.TextStyle, weight: Font.Weight) {
         _size = ScaledMetric(wrappedValue: size, relativeTo: style)
-        self.weight = weight
+        // Only two weights are bundled: anything semibold or heavier uses Bold.
+        let heavy: [Font.Weight] = [.semibold, .bold, .heavy, .black]
+        fontName = heavy.contains(weight) ? "NotoSerifSC-Bold" : "NotoSerifSC-Regular"
     }
 
     func body(content: Content) -> some View {
-        content.font(.system(size: size, weight: weight, design: .serif))
+        content.font(.custom(fontName, fixedSize: size))
     }
 }
 
@@ -60,4 +63,12 @@ extension View {
 /// The disclaimer shown in the app. App Review and users both expect it to be visible.
 enum Copy {
     static let disclaimer = "本应用内容仅供娱乐与自我反思，不构成医疗、投资、法律等专业建议。重要决定请咨询专业人士。"
+
+    /// Apple requires this wording (or equivalent) near the subscribe button.
+    static let renewalTerms = "订阅按所选周期自动续费，除非在当前周期结束前至少 24 小时在「设置 › Apple ID › 订阅」中取消。费用在确认购买时从你的 Apple ID 账户扣除。"
+
+    // TODO before App Store submission: Apple requires working links to your terms of use and
+    // privacy policy (also in App Store Connect). Set them here; the paywall shows them once non-nil.
+    static let termsURL: URL? = nil
+    static let privacyURL: URL? = nil
 }

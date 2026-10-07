@@ -107,6 +107,26 @@ final class ModelTests: XCTestCase {
     }
 }
 
+// MARK: - Bundled font
+
+final class FontTests: XCTestCase {
+    func testSerifFontsAreRegistered() {
+        for name in ["NotoSerifSC-Regular", "NotoSerifSC-Bold"] {
+            XCTAssertNotNil(UIFont(name: name, size: 20), "\(name) is not registered; check UIAppFonts in project.yml")
+        }
+    }
+
+    func testFontCoversCommonAndLibraryCharacters() {
+        let font = CTFontCreateWithName("NotoSerifSC-Regular" as CFString, 20, nil)
+        // 汉字 from the GB2312 range, a theme-library character, and the 「」 quotes the advice uses
+        for ch in "汉字篁韬晦「」，。" {
+            var glyph = CGGlyph()
+            var utf16 = Array(String(ch).utf16)
+            XCTAssertTrue(CTFontGetGlyphsForCharacters(font, &utf16, &glyph, utf16.count), "missing glyph for \(ch)")
+        }
+    }
+}
+
 // MARK: - API client
 
 final class APIClientTests: XCTestCase {
@@ -197,7 +217,7 @@ final class AppStateTests: XCTestCase {
         StubURLProtocol.handler = { _ in (200, #"{"user_id":1,"token":"abc"}"#.data(using: .utf8)!) }
         let state = AppState(api: makeClient())
         XCTAssertFalse(state.isOnboarded)
-        try await state.onboard(Profile(birthDate: day("2000-01-01")))
+        try await state.onboardAnonymously(Profile(birthDate: day("2000-01-01")))
         XCTAssertTrue(state.isOnboarded)
         XCTAssertEqual(TokenStore.load(), "abc")
         XCTAssertEqual(ProfileStore.load()?.birthDate, day("2000-01-01"))
@@ -210,7 +230,7 @@ final class AppStateTests: XCTestCase {
             request.url?.path == "/profile" ? (200, #"{"user_id":1,"token":"abc"}"#.data(using: .utf8)!) : (200, readingJSON)
         }
         let state = AppState(api: makeClient())
-        try await state.onboard(Profile(birthDate: day("2000-01-01")))
+        try await state.onboardAnonymously(Profile(birthDate: day("2000-01-01")))
         await state.load(.today)
         guard case .loaded(let r) = state.readings[.today]! else { return XCTFail("not loaded") }
         XCTAssertEqual(r.theme, "春风化雨")
@@ -226,7 +246,7 @@ final class AppStateTests: XCTestCase {
     func testFailureShowsMessageAndRetrySucceeds() async throws {
         StubURLProtocol.handler = { _ in (200, #"{"user_id":1,"token":"abc"}"#.data(using: .utf8)!) }
         let state = AppState(api: makeClient())
-        try await state.onboard(Profile(birthDate: day("2000-01-01")))
+        try await state.onboardAnonymously(Profile(birthDate: day("2000-01-01")))
 
         StubURLProtocol.handler = { _ in (502, Data()) }
         await state.load(.today)
@@ -241,7 +261,7 @@ final class AppStateTests: XCTestCase {
     func testExpiredTokenSignsTheUserOut() async throws {
         StubURLProtocol.handler = { _ in (200, #"{"user_id":1,"token":"abc"}"#.data(using: .utf8)!) }
         let state = AppState(api: makeClient())
-        try await state.onboard(Profile(birthDate: day("2000-01-01")))
+        try await state.onboardAnonymously(Profile(birthDate: day("2000-01-01")))
 
         StubURLProtocol.handler = { _ in (401, Data()) }
         await state.load(.today)
@@ -259,7 +279,7 @@ final class AppStateTests: XCTestCase {
             }
         }
         let state = AppState(api: makeClient())
-        try await state.onboard(Profile(birthDate: day("2000-01-01")))
+        try await state.onboardAnonymously(Profile(birthDate: day("2000-01-01")))
         await state.load(.today)
         try await state.updateProfile(Profile(birthDate: day("1990-05-17"), mbti: "ENFP"))
         guard case .idle = state.readings[.today]! else { return XCTFail("old reading should be cleared") }
@@ -269,7 +289,7 @@ final class AppStateTests: XCTestCase {
     func testSignOutClearsEverything() async throws {
         StubURLProtocol.handler = { _ in (200, #"{"user_id":1,"token":"abc"}"#.data(using: .utf8)!) }
         let state = AppState(api: makeClient())
-        try await state.onboard(Profile(birthDate: day("2000-01-01")))
+        try await state.onboardAnonymously(Profile(birthDate: day("2000-01-01")))
         state.signOut()
         XCTAssertFalse(state.isOnboarded)
         XCTAssertNil(TokenStore.load())
