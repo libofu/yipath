@@ -1,0 +1,5 @@
+# Terminates HTTPS and forwards to the backend. The domain comes from YIPATH_DOMAIN (docker-compose.yml).
+{$YIPATH_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:8000
+}

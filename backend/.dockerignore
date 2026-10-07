@@ -1,0 +1,14 @@
+# Keep secrets, local data and dev-only files out of the image.
+.env
+.env.*
+.venv
+.venv-*
+__pycache__
+*.pyc
+.pytest_cache
+tests
+*.sqlite3
+samples_out*.md
+longitudinal_*.md
+Dockerfile
+.dockerignore

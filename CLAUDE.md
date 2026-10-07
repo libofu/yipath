@@ -28,6 +28,11 @@ iOS subscription app: a calm-coach daily/weekly guide based on Bazi, zodiac and 
 - Debug-only launch arguments: `-yipath-demo` (skip onboarding with a sample profile), `-yipath-tab N` (open tab 0/1/2).
 - iOS ships no Chinese serif, so `ios/Yipath/Fonts/` bundles Noto Serif SC (Regular + Bold, subsetted to GB2312 + library characters, SIL OFL; see its README). Use `.songti(size, relativeTo:, weight:)` in views. Re-subset the font if theme/angle files gain rare characters.
 
+## Deployment
+- `backend/Dockerfile` (image from `requirements.lock`), `deploy/docker-compose.yml` + `Caddyfile` (automatic HTTPS), guide in `docs/deployment.md`. The Docker build itself has never been run (no Docker on the dev machine): the same layout was checked in a clean venv.
+- Production (`YIPATH_ENV=production`) runs `app/preflight.py` at startup and refuses to boot when misconfigured. Run exactly one backend instance (SQLite). Back up with `python scripts/backup_db.py`.
+- After changing `backend/requirements.txt`, regenerate `requirements.lock` (command in its header).
+
 ## Commands
 - Backend tests: `cd backend && python -m pytest`
 - Backend dev server: `cd backend && uvicorn app.main:app --reload`

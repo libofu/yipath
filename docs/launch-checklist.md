@@ -21,12 +21,11 @@ Apple's real services, because that needs your developer account.
       third-party AI model (currently DeepSeek).
 
 ## 3. Deploy the backend
-- [ ] Host it somewhere with HTTPS (the app only allows plain http to localhost). Keep `yipath.sqlite3`
-      on a persistent disk and back it up.
-- [ ] Set environment: `YIPATH_ENV=production`, the model API key, and optionally `YIPATH_TRIAL_DAYS`.
-      In production the anonymous dev signup (`POST /profile`) is off and `YIPATH_STOREKIT_LOCAL` is ignored.
-- [ ] Point the app at it: change `YIPATH_API_BASE_URL` in `ios/project.yml` (an `https://` URL).
-
+Files and a step-by-step guide are ready: see [deployment.md](deployment.md) (Docker + automatic HTTPS on one small server).
+- [ ] Get a server and a domain, then follow the guide. Production mode switches off the anonymous dev signup
+      and refuses to start if the AI key, database folder or Apple root certificate is wrong.
+- [ ] Set up the daily database backup from the guide and copy backups off the server.
+- [ ] Point the app at it: change `YIPATH_API_BASE_URL` in `ios/project.yml` to your `https://` URL.
 - [ ] In App Store Connect (App Information > App Store Server Notifications) set the **Production** and
       **Sandbox** URL to `https://<your-host>/apple/notifications` and choose **Version 2**. This is how renewals
       and refunds reach the server when the user does not open the app. Use "Request a test notification" to check it

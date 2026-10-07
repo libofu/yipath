@@ -1,0 +1,33 @@
+# One small server: the yipath backend plus Caddy, which gets and renews the HTTPS certificate by itself.
+# Usage (see docs/deployment.md):
+#   cp .env.production.example .env.production   # then fill in your keys
+#   YIPATH_DOMAIN=api.example.com docker compose up -d --build
+services:
+  app:
+    build: ../backend
+    restart: unless-stopped
+    env_file: .env.production
+    volumes:
+      - yipath-data:/data          # the database and its backups live here
+    expose:
+      - "8000"                     # reachable by Caddy only, not from the internet
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"                    # needed for the certificate challenge and the http -> https redirect
+      - "443:443"
+    environment:
+      YIPATH_DOMAIN: ${YIPATH_DOMAIN:?set YIPATH_DOMAIN to the domain that points at this server}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data           # certificates; losing this means re-issuing them
+      - caddy-config:/config
+
+volumes:
+  yipath-data:
+  caddy-data:
+  caddy-config:

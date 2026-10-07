@@ -1,8 +1,8 @@
+# Runtime dependencies (what the server needs). Build images from requirements.lock for exact versions.
 lunar-python
 fastapi
 uvicorn[standard]
 anthropic
-pytest
 httpx
 PyJWT[crypto]
 cryptography

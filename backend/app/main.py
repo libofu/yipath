@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
@@ -13,6 +14,7 @@ from app.advice.service import AdviceService, ReadingError, make_llm
 from app.auth import AppleVerifier, AuthError
 from app.config import Settings, load_settings
 from app.entitlement import Entitlement, compute_entitlement
+from app.preflight import production_problems
 from app.store import Store, SubscriptionConflict
 from app.subscription import TransactionError, TransactionVerifier
 
@@ -126,7 +128,18 @@ def _today_default() -> date:
     return datetime.now(ZoneInfo("Asia/Shanghai")).date()
 
 
-app = FastAPI(title="yipath")
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Runs once when the server starts. In production, refuse to start if misconfigured."""
+    settings = get_settings()
+    if settings.is_production:
+        problems = production_problems(settings)
+        if problems:
+            raise RuntimeError("Refusing to start in production: " + "; ".join(problems))
+    yield
+
+
+app = FastAPI(title="yipath", lifespan=lifespan)
 
 
 @app.get("/health")
