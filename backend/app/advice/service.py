@@ -14,8 +14,10 @@ from app.calc.bazi import natal_chart
 from app.calc.bazi_daily import day_reading, week_reading, week_start
 from app.store import Store
 
+from .angles import pick_card_plans
 from .prompt import PROMPT_VERSION, SYSTEM_PROMPT, build_today_prompt, build_week_prompt
 from .schema import Period, Profile, Reading
+from .themes import context_for_day, context_for_week, pick_candidates, pick_reply_phrase
 
 DEFAULT_MODEL = "claude-sonnet-5-5"
 
@@ -119,12 +121,24 @@ class AdviceService:
             return cached
 
         chart = natal_chart(profile.birth_date, profile.birth_hour, profile.birth_minute)
+        seed = f"{user_id}:{period}:{key}"
+        phrase = pick_reply_phrase(seed)
         if period == "today":
-            user_prompt = build_today_prompt(profile, chart, day_reading(chart, on))
+            day = day_reading(chart, on)
+            ctx = context_for_day(day)
+            themes = pick_candidates(ctx, seed)
+            user_prompt = build_today_prompt(profile, chart, day, themes, phrase, pick_card_plans(ctx, seed))
         else:
-            user_prompt = build_week_prompt(profile, chart, week_reading(chart, on))
+            week = week_reading(chart, on)
+            ctx = context_for_week(week)
+            themes = pick_candidates(ctx, seed)
+            user_prompt = build_week_prompt(profile, chart, week, themes, phrase, pick_card_plans(ctx, seed))
 
         reading = self._ask(user_prompt)
+        if reading.theme not in themes:
+            # The model must copy one candidate; if it altered or invented one, fall back
+            # to the first candidate (all of them fit the day) instead of failing the request.
+            reading = reading.model_copy(update={"theme": themes[0]})
         self.store.put_reading(user_id, period, key, PROMPT_VERSION, reading)
         return reading
 

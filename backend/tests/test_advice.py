@@ -126,7 +126,7 @@ def test_system_prompt_forbids_unsupplied_chart_claims_and_stock_phrase():
 
 def test_system_prompt_voice_and_theme_rules():
     assert "宜" in SYSTEM_PROMPT and "忌" in SYSTEM_PROMPT and "文言" in SYSTEM_PROMPT
-    assert "四字成语" in SYSTEM_PROMPT and "古诗" in SYSTEM_PROMPT
+    assert "主题候选" in SYSTEM_PROMPT  # theme comes from the code-picked candidates
 
 
 # --- service ---------------------------------------------------------------------------
@@ -157,7 +157,7 @@ def test_retries_once_on_invalid_json(store, profile):
     llm = FakeLlm("sorry, no JSON", json.dumps(GOOD, ensure_ascii=False))
     svc = AdviceService(store, llm)
     uid, _ = store.create_user(profile)
-    assert svc.get(uid, profile, "today", date(2026, 10, 7)).theme == "先稳后进"
+    assert svc.get(uid, profile, "today", date(2026, 10, 7)).work.action
     assert len(llm.calls) == 2
 
 

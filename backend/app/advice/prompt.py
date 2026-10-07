@@ -11,7 +11,7 @@ from app.calc.zodiac import sign_season, sun_sign
 
 from .schema import Profile
 
-PROMPT_VERSION = "v4"
+PROMPT_VERSION = "v7"
 
 WEEKDAYS = "一二三四五六日"  # Monday-first, matches date.weekday()
 
@@ -34,20 +34,17 @@ MBTI 只用来决定建议的说法与节奏（例如 I 型多留独处，J 型�
 
 【输出】
 只输出一个 JSON 对象，不要其他文字，不要代码块标记。字段：
-- theme：一个四字成语/四字短语，或一句有确切出处的古诗词名句，4～10 字，不带标点与出处署名。拿不准出处时，用四字成语。取褒义或中性之意，勿用暗含警告、败象的（如「木秀于林」）。
-  主题要贴合当日的十神与五行之象，每次各异，勿总用「张弛有度」「欣欣向荣」「行稳致远」「顺时而动」这类万能成语；契合时优先用古诗词名句，如「长风破浪会有时」「行到水穷处」「风物长宜放眼量」「春风得意马蹄疾」「会当凌绝顶」，这些仅供参考，不必照抄。要贴合当日/当周的主旨。
+- theme：必须从输入「主题候选」中择一，原文照抄，不增不改；选与当日气象及你所写三条建议最相合的一句。
 - work（宜·事业）、life（宜·起居）、avoid（忌）：各为 {"action": ..., "reason": ...}。
-- action：具体、可执行，最好带时段或时长，≤50 字，语气带一点文言（如「晨起先办最难一事，四十分钟不接外扰」）。
+- action：具体、可执行，≤50 字，须围绕输入为该条指定的「角度」与「时段」，写明做什么、做多久；语气带一点文言。角度说明只是方向，请用自己的话写，不要照抄原句，具体做法（去哪里、做哪一件）自行选定。
 - reason：一句话点明依据，≤40 字，文言短句，可引一个命理词（十神/五行/冲合/星座/MBTI），其余用白话让人看得懂。
-- 「忌」不必都教人如何回话；若要给应对之语，每次换不同的说法（如「容我细看」「且缓一缓」「改日再议」「先记下」），同一份读数里最多出现一次，也不必每份都带。
-- 三条要各不相同：不要三条都落在「独处散步」或「不接新任务」上；每次从不同角度出发。
-- 时段随命盘与当日气象而定，不必按晨、午、夜的固定顺序，忌那一条也不必总在入夜。
+- 「忌」不必都教人如何回话；若需给应对他人的话术，只可用输入给出的「应对用语」，一份读数至多用一次，也可不用。
 - 提到星期几时，以输入里每日行首标注的「周X」为准，不要自己推算。
 - 前后一致：某一天若在 work 或 life 中被推荐，就不要在 avoid 中又劝人避开。
 - 全部使用简体中文。
 
-示范（仅示范格式与语气，内容勿照抄）：
-{"theme":"静水流深","work":{"action":"晨起先办最难一事，四十分钟不接外扰","reason":"食神当令，文思易出，宜趁清晨吐秀"},"life":{"action":"日暮后与旧友通一次电话，十分钟即可","reason":"木气偏弱，得人气滋养方能舒展"},"avoid":{"action":"午后勿当场应承他人新托付，先记下，隔一时辰再答","reason":"日支逢冲，节奏易乱，急应反多返工"}}"""
+格式（仅示意，字段内容须自己写）：
+{"theme":"（主题候选之一）","work":{"action":"…","reason":"…"},"life":{"action":"…","reason":"…"},"avoid":{"action":"…","reason":"…"}}"""
 
 
 def _chart_lines(chart: NatalChart) -> list[str]:
@@ -80,18 +77,50 @@ def _day_line(r: DayReading) -> str:
     return "，".join(bits)
 
 
-def build_today_prompt(profile: Profile, chart: NatalChart, reading: DayReading) -> str:
+_CARD_NAMES = {"work": "宜·事业", "life": "宜·起居", "avoid": "忌"}
+
+
+def _choice_lines(themes: list[str] | None, phrase: str | None, plans: dict | None = None) -> list[str]:
+    lines = []
+    if plans:
+        lines.append("三条各自的角度与时段（action 须围绕之，不得更换）：")
+        for kind in ("work", "life", "avoid"):
+            p = plans[kind]
+            lines.append(f"- {_CARD_NAMES[kind]}｜{p.label}：{p.hint}｜时段：{p.slot}")
+    if themes:
+        lines.append("主题候选（theme 须从中择一，原文照抄）：" + "｜".join(themes))
+    if phrase:
+        lines.append(f"应对用语（需要时只可用这一句）：「{phrase}」")
+    return lines
+
+
+def build_today_prompt(
+    profile: Profile,
+    chart: NatalChart,
+    reading: DayReading,
+    themes: list[str] | None = None,
+    phrase: str | None = None,
+    plans: dict | None = None,
+) -> str:
     lines = _chart_lines(chart) + _profile_lines(profile, reading.day)
     lines += [
         f"今天：{reading.day.isoformat()}",
         f"流年{reading.year_pillar.text} 流月{reading.month_pillar.text}",
         _day_line(reading),
+        *_choice_lines(themes, phrase, plans),
         "请为用户生成「今日」建议。",
     ]
     return "\n".join(lines)
 
 
-def build_week_prompt(profile: Profile, chart: NatalChart, week: WeekReading) -> str:
+def build_week_prompt(
+    profile: Profile,
+    chart: NatalChart,
+    week: WeekReading,
+    themes: list[str] | None = None,
+    phrase: str | None = None,
+    plans: dict | None = None,
+) -> str:
     lines = _chart_lines(chart) + _profile_lines(profile, week.start)
     lines.append(f"本周：{week.days[0].day.isoformat()} 至 {week.days[-1].day.isoformat()}（周一至周日）")
     lines += [_day_line(r) for r in week.days]
@@ -100,5 +129,6 @@ def build_week_prompt(profile: Profile, chart: NatalChart, week: WeekReading) ->
         lines.append("顺畅的日子：" + "、".join(r.day.isoformat() for r in week.harmony_days()))
     if week.clash_days():
         lines.append("容易被打乱的日子：" + "、".join(r.day.isoformat() for r in week.clash_days()))
+    lines += _choice_lines(themes, phrase, plans)
     lines.append("请为用户生成「本周」建议，action 里可以指明具体星期几。")
     return "\n".join(lines)

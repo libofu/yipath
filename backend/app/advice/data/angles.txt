@@ -1,0 +1,41 @@
+# yipath card angles: what each of the three cards is *about*, so readings don't all say
+# the same thing. One entry per line (see Format below).
+#
+# Format: kind|label|hint|tags|slots
+# kind   work (宜·事业) | life (宜·起居) | avoid (忌)
+# label  short name shown to the model
+# hint   the card's intent in plain words. Keep it bare and un-quotable (no finished sentences
+#        or lists of options), otherwise the model copies it into the reading verbatim.
+# tags   same vocabulary as themes.txt: ten gods, elements (木火土金水), 冲 / 合.
+#        Used only to prefer angles that suit the day; an angle with no tag fits any day.
+# slots  time slots this angle makes sense at (晨起 午前 午后 日暮 入夜), or - for any.
+#
+# Keep hints free of money, contracts, health and medical topics (the safety boundary).
+
+# --- 宜·事业 ---
+work|专攻|专注啃下一件要紧而困难的事，并限定时长|七杀 正官 食神|-
+work|沟通|与具体某位同事、上级或合作方谈清一个目的|合 偏财 劫财 比肩|午前 午后
+work|整理|理清手头事务的头绪，如清单、归档、复盘|正财 正官 偏印|-
+work|研习|吸收新东西：读、问、学，然后留下心得|偏印 正印|-
+work|收尾|了结一件拖了很久的事，或为它定下一步|正财 冲|-
+work|起草|先动笔出一个粗稿，不求完美|食神 伤官|-
+work|协作|与人分担一件事：分工、对齐、交接|合 比肩 劫财|午前 午后
+
+# --- 宜·起居 ---
+life|行走|出门走一程，去处自择，让手机歇一歇|木 食神 偏财|-
+life|人情|与久疏联络的人或家人亲近一回|合 比肩 劫财 正印|午后 日暮 入夜
+life|居所|让住处的某一处清爽起来|土 正财 木|-
+life|静处|留一段无事可做的独处|偏印 正印 冲|-
+life|兴趣|做一件纯属自己喜欢的小事|食神 伤官 火|午后 日暮 入夜
+life|收心|为一天收束，在入夜前慢下来|七杀 冲 正官|日暮 入夜
+
+# --- 忌 ---
+avoid|言语|慎言：不争辩、不说气话、不把话说满|伤官 劫财 比肩|-
+avoid|日程|不排满日程，不临时改动已定之事，留出空档|冲 偏财|-
+avoid|应承|不当场答应他人新的请托，先记下|冲 偏财 劫财|-
+avoid|比较|不与人论高下，不拿自己与人相比|劫财 比肩|-
+avoid|反复|已定之事不再反复推敲，不翻旧账|正官 偏印 正印|-
+avoid|信息|不被消息和他人的节奏牵着走，集中批处理|偏印 冲|-
+avoid|决断|情绪起伏时不拍板重要的决定|冲 七杀 伤官|-
+avoid|多线|不同时开几件新事，一次一件|食神 偏财 比肩|-
+avoid|赶场|不奔波赶场，不让一天被路程切碎|冲 偏财|-

@@ -5,8 +5,10 @@ Uses whichever provider YIPATH_LLM / the .env keys select. Writes
 scratch output to samples_out_<model>_<prompt version>.md (gitignored).
 """
 
+import re
 import sys
 import tempfile
+from difflib import SequenceMatcher
 from datetime import date
 from pathlib import Path
 
@@ -38,13 +40,22 @@ def main() -> None:
     llm = make_llm()
     model = getattr(llm, "_model", "unknown")
     out = Path(__file__).resolve().parent.parent / f"samples_out_{model}_{PROMPT_VERSION}.md"
-    svc = AdviceService(Store(Path(tempfile.mkdtemp()) / "s.sqlite3"), llm)
+    cards_meta = []  # (hint, slot) per card, in call order, to measure echoing afterwards
+
+    class Spy:
+        def complete(self, system: str, user: str) -> str:
+            cards_meta.append(re.findall(r"- (?:宜·事业|宜·起居|忌)｜.+?：(.+?)｜时段：(\S+)", user))
+            return llm.complete(system, user)
+
+    svc = AdviceService(Store(Path(tempfile.mkdtemp()) / "s.sqlite3"), Spy())
     lines = []
+    readings = []
     for i, (bd, hr, mbti) in enumerate(PROFILES, 1):
         p = Profile(birth_date=bd, birth_hour=hr, mbti=mbti)
         uid, _ = svc.store.create_user(p)
         for period in ("today", "week"):
             r = svc.get(uid, p, period, on)
+            readings.append(r)
             lines += [
                 f"## #{i} {bd} hour={hr} {mbti} — {period}",
                 f"**{r.theme}**",
@@ -56,6 +67,15 @@ def main() -> None:
         print(f"done #{i}", flush=True)
     out.write_text("\n".join(lines), encoding="utf-8")
     print(f"\nwrote {out}")
+
+    # echo check: does a card repeat >= 8 consecutive characters of its angle hint?
+    echoed = slot_ok = total = 0
+    for r, meta in zip(readings, cards_meta):
+        for card, (hint, slot) in zip((r.work, r.life, r.avoid), meta):
+            total += 1
+            slot_ok += slot in card.action
+            echoed += SequenceMatcher(None, card.action, hint).find_longest_match(0, len(card.action), 0, len(hint)).size >= 8
+    print(f"{total} cards | time slot used: {slot_ok} | echoing the angle hint (>=8 chars): {echoed}")
 
 
 if __name__ == "__main__":

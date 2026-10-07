@@ -19,8 +19,8 @@ An iOS subscription app for people tired of making decisions. A calm coach reads
 Deferred: Plum Blossom / I Ching, blood type, month and year readings.
 
 ## Output (per period: today, week)
-- `theme`: a four-character idiom/phrase or one line of classical verse (4-10 chars, no punctuation), e.g. 木气补身, 风物长宜放眼量
-- `work` (宜·事业), `life` (宜·起居), `avoid` (忌): each has `action` (concrete, doable, <=50 chars) and `reason` (one classical-flavored line, <=40 chars)
+- `theme`: a four-character idiom/phrase or one line of classical verse (4-10 chars, no punctuation). Chosen by the model from 5 code-picked candidates out of a curated library (`backend/app/advice/data/themes.txt`, tagged by ten god / element / 冲 / 合), so quotes are real and rotate across days.
+- `work` (宜·事业), `life` (宜·起居), `avoid` (忌): each has `action` (concrete, doable, <=50 chars) and `reason` (one classical-flavored line, <=40 chars). For each reading, code assigns every card an *angle* (e.g. 专攻 / 沟通 / 行走 / 应承 / 日程, from `backend/app/advice/data/angles.txt`, preferring angles that suit the day's chart) and a distinct time slot (晨起 午前 午后 日暮 入夜), so cards don't all say the same thing.
 
 ## Principles
 - Code computes charts (deterministic, tested). The LLM only interprets.
