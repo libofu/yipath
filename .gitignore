@@ -1,0 +1,17 @@
+.DS_Store
+.env
+*.sqlite3
+*.db
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Xcode
+xcuserdata/
+DerivedData/
+build/
+*.xcuserstate
