@@ -22,7 +22,7 @@ from __future__ import annotations
 import base64
 import hashlib
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -60,6 +60,18 @@ class Transaction:
     expires_at: datetime   # timezone-aware UTC
     environment: str
     revoked: bool
+
+
+# Notification types that mean "this purchase no longer entitles the user to anything".
+REVOKING_NOTIFICATIONS = {"REFUND", "REVOKE"}
+
+
+@dataclass(frozen=True)
+class Notification:
+    type: str                      # e.g. DID_RENEW, EXPIRED, REFUND, TEST
+    subtype: str | None
+    uuid: str
+    transaction: Transaction | None   # None for e.g. TEST notifications
 
 
 def load_pinned_root() -> x509.Certificate:
@@ -100,9 +112,51 @@ class TransactionVerifier:
 
     # --- public ---------------------------------------------------------------------------
     def verify(self, signed_transaction: str) -> Transaction:
+        """A signed transaction sent by the app after a purchase."""
+        claims = self._verified_claims(
+            signed_transaction,
+            environment_of=lambda payload: payload.get("environment"),
+            allow_local=self.settings.storekit_local,
+        )
+        return self._claims_to_transaction(claims)
+
+    def verify_notification(self, signed_payload: str) -> Notification:
+        """An App Store Server Notification (V2) that Apple POSTs to our webhook.
+
+        Held to the same standard as a purchase (Apple's pinned chain, markers, signature), and
+        stricter in one way: Xcode's local test transactions are never accepted here, because Apple
+        never sends those. The transaction inside is verified on its own.
+        """
+        claims = self._verified_claims(
+            signed_payload,
+            environment_of=lambda payload: (payload.get("data") or {}).get("environment"),
+            allow_local=False,
+        )
+        data = claims.get("data") or {}
+        if data.get("bundleId") != self.settings.bundle_id:
+            raise TransactionError("notification is for a different app")
+        kind = claims.get("notificationType")
+        if not isinstance(kind, str) or not kind:
+            raise TransactionError("notification has no type")
+
+        transaction = None
+        inner = data.get("signedTransactionInfo")
+        if inner:
+            inner_claims = self._verified_claims(
+                inner, environment_of=lambda payload: payload.get("environment"), allow_local=False
+            )
+            transaction = self._claims_to_transaction(inner_claims)
+            if kind in REVOKING_NOTIFICATIONS:
+                transaction = replace(transaction, revoked=True)
+        return Notification(type=kind, subtype=claims.get("subtype"), uuid=str(claims.get("notificationUUID", "")), transaction=transaction)
+
+    # --- internals --------------------------------------------------------------------------
+    def _verified_claims(self, jws: str, *, environment_of: Callable[[dict], str | None], allow_local: bool) -> dict:
+        """Checks that Apple signed this JWS and returns its claims. `environment_of` says where
+        in the payload the environment (Sandbox / Production / Xcode) is found."""
         try:
-            header = jwt.get_unverified_header(signed_transaction)
-            unverified = jwt.decode(signed_transaction, options={"verify_signature": False})
+            header = jwt.get_unverified_header(jws)
+            unverified = jwt.decode(jws, options={"verify_signature": False})
         except jwt.PyJWTError as e:
             raise TransactionError(f"not a valid JWS: {e}") from e
         if header.get("alg") != "ES256":
@@ -115,9 +169,9 @@ class TransactionVerifier:
         if len(certs) < 1:
             raise TransactionError("missing certificate chain")
 
-        environment = unverified.get("environment")
+        environment = environment_of(unverified)
         if environment == LOCAL_ENVIRONMENT:
-            if not self.settings.storekit_local:
+            if not allow_local:
                 raise TransactionError("local StoreKit test transactions are not accepted")
         elif environment in ALLOWED_ENVIRONMENTS:
             self._verify_chain(certs)
@@ -125,17 +179,15 @@ class TransactionVerifier:
             raise TransactionError(f"unknown environment: {environment!r}")
 
         try:
-            claims = jwt.decode(
-                signed_transaction,
+            return jwt.decode(
+                jws,
                 certs[0].public_key(),
                 algorithms=["ES256"],
                 options={"verify_exp": False, "verify_iat": False, "verify_nbf": False, "verify_aud": False},
             )
         except (jwt.PyJWTError, InvalidSignature) as e:
             raise TransactionError(f"signature check failed: {e}") from e
-        return self._claims_to_transaction(claims)
 
-    # --- internals --------------------------------------------------------------------------
     def _verify_chain(self, certs: list[x509.Certificate]) -> None:
         if len(certs) < 2:
             raise TransactionError("certificate chain too short")

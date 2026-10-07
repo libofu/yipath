@@ -169,6 +169,33 @@ class Store:
                 (user_id, tx.original_transaction_id, tx.product_id, tx.expires_at.isoformat(), tx.environment, int(tx.revoked)),
             )
 
+    def apply_notification(self, tx: Transaction) -> bool:
+        """Applies what an App Store notification says about a subscription we already know.
+        Returns False if no account has this subscription (nothing to update).
+
+        Notifications can arrive late or out of order, so: a refund always wins and sticks; an
+        ordinary update only ever moves the expiry forward, never back."""
+        with self._conn() as c:
+            row = c.execute(
+                "SELECT expires_at, revoked FROM subscriptions WHERE original_transaction_id = ?",
+                (tx.original_transaction_id,),
+            ).fetchone()
+            if row is None:
+                return False
+            stored_expiry, stored_revoked = _parse_utc(row[0]), bool(row[1])
+            if tx.revoked:
+                c.execute(
+                    "UPDATE subscriptions SET revoked = 1, updated_at = CURRENT_TIMESTAMP WHERE original_transaction_id = ?",
+                    (tx.original_transaction_id,),
+                )
+            elif not stored_revoked and tx.expires_at >= stored_expiry:
+                c.execute(
+                    "UPDATE subscriptions SET product_id = ?, expires_at = ?, updated_at = CURRENT_TIMESTAMP "
+                    "WHERE original_transaction_id = ?",
+                    (tx.product_id, tx.expires_at.isoformat(), tx.original_transaction_id),
+                )
+            return True
+
     def get_subscription(self, user_id: int) -> tuple[str, datetime, bool] | None:
         """(product_id, expires_at, revoked) or None."""
         with self._conn() as c:

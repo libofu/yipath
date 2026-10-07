@@ -18,6 +18,7 @@ iOS subscription app: a calm-coach daily/weekly guide based on Bazi, zodiac and 
 - Sign in with Apple -> `POST /auth/apple` (`backend/app/auth.py`, nonce required) -> our own session token. `POST /profile` (anonymous) exists only for development and is off when `YIPATH_ENV=production`.
 - Everyone gets a server-side free trial (`YIPATH_TRIAL_DAYS`, default 3), then needs a subscription. Readings return 402 otherwise. `GET /subscription` reports the status.
 - StoreKit 2 transactions are verified server-side (`backend/app/subscription.py`: Apple's pinned root cert, marker OIDs, ES256 signature, bundle/product checks). Never trust the app about what was bought. Local Xcode StoreKit transactions are accepted only with `YIPATH_STOREKIT_LOCAL=1` (never in production).
+- `POST /apple/notifications` is the App Store Server Notifications V2 webhook (renewals, expiry, refunds): no login, trusted only through Apple's signature, held to the same checks as purchases and never accepts Xcode-local transactions.
 - `DELETE /account` erases all server data (App Store requirement). See `docs/launch-checklist.md` for the Apple-account steps and known gaps.
 
 ## iOS app (ios/)

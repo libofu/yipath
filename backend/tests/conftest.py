@@ -83,3 +83,17 @@ def sign_transaction(chain: Chain, *, include_root=False, **overrides) -> str:
 @pytest.fixture
 def chain() -> Chain:
     return make_chain()
+
+
+def sign_notification(chain: Chain, notification_type: str, *, transaction: str | None = None,
+                      environment="Sandbox", bundle_id="com.libofu.yipath", subtype=None, **over) -> str:
+    """An App Store Server Notification V2 `signedPayload`, signed by the (test) Apple chain."""
+    data = {"environment": environment, "bundleId": bundle_id, "appAppleId": 123456789}
+    if transaction is not None:
+        data["signedTransactionInfo"] = transaction
+    claims = {"notificationType": notification_type, "notificationUUID": "uuid-1", "version": "2.0",
+              "signedDate": int(time.time() * 1000), "data": data}
+    if subtype:
+        claims["subtype"] = subtype
+    claims.update(over)
+    return jwt.encode(claims, chain.leaf_key, algorithm="ES256", headers={"x5c": chain.x5c()})

@@ -27,17 +27,22 @@ Apple's real services, because that needs your developer account.
       In production the anonymous dev signup (`POST /profile`) is off and `YIPATH_STOREKIT_LOCAL` is ignored.
 - [ ] Point the app at it: change `YIPATH_API_BASE_URL` in `ios/project.yml` (an `https://` URL).
 
+- [ ] In App Store Connect (App Information > App Store Server Notifications) set the **Production** and
+      **Sandbox** URL to `https://<your-host>/apple/notifications` and choose **Version 2**. This is how renewals
+      and refunds reach the server when the user does not open the app. Use "Request a test notification" to check it
+      (the server answers `{"handled": false}` for Apple's TEST message).
+
 ## 4. Verify against the real App Store (cannot be done offline)
 - [ ] Sign in with Apple on a real device or a simulator signed in to an Apple ID.
 - [ ] Make a **sandbox** purchase (TestFlight or a sandbox tester). Confirm `POST /subscription/verify` returns 200.
       This is the first test against Apple's real certificate chain: the marker OIDs in
       `backend/app/subscription.py` (`LEAF_MARKER_OID`, `INTERMEDIATE_MARKER_OID`) were copied from Apple's
       open-source library and could only be checked against a locally built chain.
-- [ ] Check: renewal arrives, "Restore purchases" works, deleting the account works.
+- [ ] Check: renewal arrives, "Restore purchases" works, a refund from a sandbox tester cuts access, deleting the account works.
 
 ## Known gaps (not blockers for a first TestFlight)
-- No App Store Server Notifications webhook yet. Expiry is handled from the stored `expires_at`, and renewals
-  and refunds reach the server only when the app next opens and re-sends its transactions.
+- The webhook only knows subscriptions an account has already registered through the app. A notification for an
+  unknown subscription is acknowledged and ignored.
 - The free trial is server-side (3 days from signup, per Apple ID), not an Apple introductory offer.
 - Deleting the account erases server data but cannot cancel the Apple subscription; the app tells the user.
 - Local StoreKit test purchases all report transaction id `0`, so two dev accounts cannot both "buy" in local mode.

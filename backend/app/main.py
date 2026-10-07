@@ -46,6 +46,10 @@ class SignedTransaction(BaseModel):
     signed_transaction: str
 
 
+class AppleNotification(BaseModel):
+    signedPayload: str   # Apple's field name
+
+
 class EntitlementOut(BaseModel):
     status: str                       # "subscribed" | "trial" | "expired"
     trial_ends_at: datetime
@@ -204,6 +208,25 @@ def verify_subscription(
     except SubscriptionConflict:
         raise HTTPException(status_code=409, detail="this subscription belongs to another account")
     return EntitlementOut.of(compute_entitlement(store, settings, user.id))
+
+
+@app.post("/apple/notifications")
+def apple_notifications(
+    body: AppleNotification,
+    store: Store = Depends(get_store),
+    verifier: TransactionVerifier = Depends(get_tx_verifier),
+) -> dict[str, bool]:
+    """App Store Server Notifications V2: Apple calls this when a subscription renews, expires or
+    is refunded, so access stays right even if the user never reopens the app.
+
+    There is no login here; the request is trusted only if Apple's signature checks out. Set this
+    URL in App Store Connect (App Information > App Store Server Notifications)."""
+    try:
+        notification = verifier.verify_notification(body.signedPayload)
+    except TransactionError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    handled = store.apply_notification(notification.transaction) if notification.transaction else False
+    return {"handled": handled}
 
 
 # --- readings (need a profile and an active trial/subscription) -----------------------------------------
