@@ -21,7 +21,9 @@ targets:
     type: application
     platform: iOS
     sources:
-      - Yipath
+      - path: Yipath
+        excludes:
+          - "*.entitlements"
     info:
       path: Yipath/Info.plist
       properties:
@@ -38,16 +40,14 @@ targets:
         # Lets the app talk plain http to the local dev server (127.0.0.1) only.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
-    # Sign in with Apple. (A real device build also needs this capability enabled for the
-    # App ID in your Apple Developer account; the simulator does not check.)
-    entitlements:
-      path: Yipath/Yipath.entitlements
-      properties:
-        com.apple.developer.applesignin:
-          - Default
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.libofu.yipath
+        # Sign in with Apple needs a signing team, so the entitlement applies to real-device builds only.
+        # The simulator builds without a team (use the debug "不登录，直接试用" button there).
+        # For a device build, set your team: DEVELOPMENT_TEAM below (or in Xcode: Signing & Capabilities).
+        CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]: Yipath/Yipath.entitlements
+        # DEVELOPMENT_TEAM: ABCDE12345
         GENERATE_INFOPLIST_FILE: NO
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: ""

@@ -7,7 +7,9 @@ Apple's real services, because that needs your developer account.
 ## 1. Apple Developer account and App Store Connect
 - [ ] Join the Apple Developer Program (needed for device builds, TestFlight, Sign in with Apple, in-app purchases).
 - [ ] Create the App ID `com.libofu.yipath` and enable the **Sign in with Apple** capability on it.
-- [ ] In `ios/project.yml`, set your `DEVELOPMENT_TEAM`, then `cd ios && xcodegen`.
+- [ ] In `ios/project.yml`, uncomment `DEVELOPMENT_TEAM` and put your Team ID there (or pick the team in Xcode under
+      Signing & Capabilities), then `cd ios && xcodegen`. Until then only the simulator builds. A free Apple ID can
+      run the app on your own iPhone but cannot enable Sign in with Apple or in-app purchases; those need the paid program.
 - [ ] In App Store Connect create one **subscription group** with two auto-renewable subscriptions whose
       product ids are exactly `com.libofu.yipath.monthly` and `com.libofu.yipath.yearly`.
       The prices in `ios/StoreKit/Yipath.storekit` (¥18 / ¥128) are **placeholders** for local testing only.

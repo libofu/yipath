@@ -1,4 +1,14 @@
 {
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
   "identifier" : "A1B2C3D4",
   "nonRenewingSubscriptions" : [
 
@@ -7,13 +17,22 @@
 
   ],
   "settings" : {
+    "_askToBuyEnabled" : false,
+    "_billingGracePeriodEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_disableDialogs" : false,
     "_failTransactionsEnabled" : false,
-    "_locale" : "zh_CN",
+    "_locale" : "zh_Hans",
+    "_renewalBillingIssuesEnabled" : false,
     "_storefront" : "CHN",
     "_storeKitErrors" : [
 
-    ]
+    ],
+    "_timeRate" : 0
   },
+  "subscriptionBundleGroups" : [
+
+  ],
   "subscriptionGroups" : [
     {
       "id" : "21000001",
@@ -26,6 +45,15 @@
           "adHocOffers" : [
 
           ],
+          "billingPlans" : [
+            {
+              "billingPlanType" : "BILLED_UPFRONT",
+              "commitmentDisplayPrice" : "18",
+              "displayPrice" : "18",
+              "internalID" : "991FC4D2",
+              "isEnabled" : true
+            }
+          ],
           "codeOffers" : [
 
           ],
@@ -33,7 +61,9 @@
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "6740000001",
-          "introductoryOffer" : null,
+          "introductoryOffers" : [
+
+          ],
           "localizations" : [
             {
               "description" : "每日宜忌与行动安排，按月续费",
@@ -45,11 +75,23 @@
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "月度会员",
           "subscriptionGroupID" : "21000001",
-          "type" : "RecurringSubscription"
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
         },
         {
           "adHocOffers" : [
 
+          ],
+          "billingPlans" : [
+            {
+              "billingPlanType" : "BILLED_UPFRONT",
+              "commitmentDisplayPrice" : "128",
+              "displayPrice" : "128",
+              "internalID" : "8BB82C32",
+              "isEnabled" : true
+            }
           ],
           "codeOffers" : [
 
@@ -58,7 +100,9 @@
           "familyShareable" : false,
           "groupNumber" : 2,
           "internalID" : "6740000002",
-          "introductoryOffer" : null,
+          "introductoryOffers" : [
+
+          ],
           "localizations" : [
             {
               "description" : "每日宜忌与行动安排，按年续费",
@@ -70,13 +114,19 @@
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "年度会员",
           "subscriptionGroupID" : "21000001",
-          "type" : "RecurringSubscription"
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
         }
       ]
     }
   ],
+  "subscriptionSuiteGroups" : [
+
+  ],
   "version" : {
-    "major" : 3,
-    "minor" : 0
+    "major" : 6,
+    "minor" : 3
   }
 }

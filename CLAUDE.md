@@ -23,6 +23,7 @@ iOS subscription app: a calm-coach daily/weekly guide based on Bazi, zodiac and 
 
 ## iOS app (ios/)
 - SwiftUI, iOS 17+, bundle id `com.libofu.yipath`. The Xcode project is generated from `ios/project.yml` with XcodeGen (`brew install xcodegen`, then `cd ios && xcodegen`); do not commit `Yipath.xcodeproj` or `Info.plist`.
+- Signing: the Sign in with Apple entitlement (`ios/Yipath/Yipath.entitlements`, committed) applies to real-device builds only (`CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]`), so the simulator builds without a development team. Device builds need `DEVELOPMENT_TEAM` (see `project.yml`).
 - Backend URL is `YIPATH_API_BASE_URL` in `project.yml` (default `http://127.0.0.1:8000`, simulator + local uvicorn).
 - Local purchases: `ios/StoreKit/Yipath.storekit` (placeholder prices) is used by Xcode's Run and by `SKTestSession` in the tests. `simctl launch` does not apply it, so the paywall shows no products there.
 - Debug-only launch arguments: `-yipath-demo` (skip onboarding with a sample profile), `-yipath-tab N` (open tab 0/1/2).
